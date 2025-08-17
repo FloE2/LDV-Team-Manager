@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, UserCheck, Calendar, Trophy, Users, BarChart3, Plus, Edit, Save, X, History, ArrowLeft, Trash2, CheckCircle, XCircle, Heart, Mountain, Phone, Star, ClipboardCheck, Building } from 'lucide-react';
+import { Settings, UserCheck, Calendar, Trophy, Users, BarChart3, Plus, Edit, Save, X, History, ArrowLeft, Trash2, CheckCircle, XCircle, Heart, Mountain, Phone, Star, ClipboardCheck, ChevronDown, ChevronUp, Building } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import TrainingsView from './TrainingsView.jsx';
 import Players from './Players.jsx';
@@ -1184,7 +1184,8 @@ const BasketballApp = () => {
     const nextTraining = trainings.filter(t => t.status === 'upcoming').sort((a, b) => new Date(a.date) - new Date(b.date))[0];
     const nextMatch = matches.filter(m => m.status === 'upcoming').sort((a, b) => new Date(a.date) - new Date(b.date))[0];
     
-    
+    // ✅ NOUVEAUX ÉTATS pour la consultation de composition d'équipe
+    const [showMatchComposition, setShowMatchComposition] = useState(false);
     
     // ✅ États pour la gestion des actualités - MAINTENANT PERSISTANTES
     const [editingNews, setEditingNews] = useState(false);
@@ -1196,6 +1197,24 @@ const BasketballApp = () => {
         setTempNewsLinks([...newsLinks]); // Copie des actualités existantes
       }
     }, [editingNews, newsLinks]);
+
+    // ✅ NOUVELLES FONCTIONS pour la gestion de la composition d'équipe
+    const getSelectedPlayersForMatch = (match) => {
+      if (!match || !match.selectedPlayers || match.selectedPlayers.length === 0) {
+        return { titulaires: [], renforts: [] };
+      }
+
+      const selectedStudents = match.selectedPlayers
+        .map(playerId => students.find(s => s.id === playerId))
+        .filter(Boolean);
+
+      const titulaires = selectedStudents.filter(player => player.team === match.team);
+      const renforts = selectedStudents.filter(player => player.team !== match.team);
+
+      return { titulaires, renforts };
+    };
+
+    const { titulaires: matchTitulaires, renforts: matchRenforts } = nextMatch ? getSelectedPlayersForMatch(nextMatch) : { titulaires: [], renforts: [] };
 
     // ✅ LOGIQUE : Récupérer les vraies données du dernier entraînement
     const getLastTrainingAttendance = () => {
@@ -1221,13 +1240,13 @@ const BasketballApp = () => {
           };
 
           // ✅ Filtrer pour ne compter que les joueurs actuels
-attendance.attendances
-.filter(att => students.find(s => s.id === att.studentId))
-.forEach(att => {
-  if (counts.hasOwnProperty(att.status)) {
-    counts[att.status]++;
-  }
-});
+          attendance.attendances
+            .filter(att => students.find(s => s.id === att.studentId))
+            .forEach(att => {
+              if (counts.hasOwnProperty(att.status)) {
+                counts[att.status]++;
+              }
+            });
 
           return {
             presentCount: counts.present,
@@ -1344,6 +1363,83 @@ attendance.attendances
                       {new Date(nextMatch.date).toLocaleDateString('fr-FR')} à {nextMatch.time}
                     </p>
                     <p className="text-sm text-slate-500">{nextMatch.championship} - {nextMatch.lieu}</p>
+                    
+                    {/* ✅ NOUVELLE SECTION - Composition d'équipe */}
+                    {nextMatch.selectedPlayers && nextMatch.selectedPlayers.length > 0 && (
+                      <div className="mt-3">
+                        <button
+                          onClick={() => setShowMatchComposition(!showMatchComposition)}
+                          className="flex items-center gap-2 text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded transition-colors"
+                        >
+                          <Users size={12} />
+                          <span>Composition ({nextMatch.selectedPlayers.length} joueurs)</span>
+                          {showMatchComposition ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                        </button>
+                        
+                        {/* ✅ Affichage de la composition */}
+                        {showMatchComposition && (
+                          <div className="mt-2 p-3 bg-white rounded border border-red-200">
+                            {/* Titulaires */}
+                            {matchTitulaires.length > 0 && (
+                              <div className="mb-3">
+                                <h5 className="text-xs font-medium text-slate-700 mb-2 flex items-center gap-1">
+                                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                  Titulaires Équipe {nextMatch.team} ({matchTitulaires.length})
+                                </h5>
+                                <div className="grid grid-cols-2 gap-1">
+                                  {matchTitulaires.map(player => (
+                                    <div key={player.id} className="flex items-center gap-2 text-xs p-1 bg-green-50 rounded">
+                                      <div className="w-4 h-4 bg-green-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                                        {player.firstName[0]}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="font-medium text-green-800 truncate">
+                                          {player.firstName} {player.lastName}
+                                        </div>
+                                        <div className="text-green-600 text-xs">{player.position}</div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Renforts */}
+                            {matchRenforts.length > 0 && (
+                              <div>
+                                <h5 className="text-xs font-medium text-slate-700 mb-2 flex items-center gap-1">
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                  Renforts ({matchRenforts.length})
+                                </h5>
+                                <div className="grid grid-cols-2 gap-1">
+                                  {matchRenforts.map(player => (
+                                    <div key={player.id} className="flex items-center gap-2 text-xs p-1 bg-blue-50 rounded">
+                                      <div className="w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                                        {player.firstName[0]}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="font-medium text-blue-800 truncate">
+                                          {player.firstName} {player.lastName}
+                                        </div>
+                                        <div className="text-blue-600 text-xs">{player.position} • Éq.{player.team}</div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Message si aucun joueur */}
+                            {matchTitulaires.length === 0 && matchRenforts.length === 0 && (
+                              <div className="text-center py-2 text-slate-500 text-xs">
+                                <Users size={16} className="mx-auto mb-1 opacity-50" />
+                                <p>Aucun joueur sélectionné</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
