@@ -72,7 +72,7 @@ const Stats = ({
       : students.filter(s => s.team === selectedTeam);
 
     const totalStudents = filteredStudents.length;
-    const totalMatches = matches.length;
+    const totalMatches = matches.filter(match => match.ourScore !== null && match.opponentScore !== null).length;
     const totalTrainings = trainings.length;
     
     // Calculer la présence moyenne
